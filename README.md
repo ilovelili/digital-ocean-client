@@ -1,6 +1,6 @@
 # Digital Ocean Client
 
-Digital Ocean client designed for easy use. It's used by my own [DongFeng]("https://github.com/ilovelili/dongfeng-core") project.
+Digital Ocean client designed for easy use. It's used by my own [DongFeng](https://github.com/ilovelili/dongfeng-core) project.
 
 ## Dependencies
 
