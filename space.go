@@ -12,6 +12,17 @@ import (
 	"golang.org/x/net/context"
 )
 
+// UploadOptions upload response
+type UploadOptions struct {
+	FileName string
+	// visible to public or not
+	Public bool
+	// Timeout upload timeout
+	Timeout time.Duration
+	// Metadata user metadata
+	Metadata map[string]string
+}
+
 // UploadResponse upload response
 type UploadResponse struct {
 	// Location location of uploaded file
@@ -86,7 +97,7 @@ func (ss *SpaceService) client() (*minio.Client, error) {
 }
 
 // Upload upload file
-func (ss *SpaceService) Upload(filepath string, timeout ...int) (resp *UploadResponse) {
+func (ss *SpaceService) Upload(opts *UploadOptions) (resp *UploadResponse) {
 	resp = new(UploadResponse)
 
 	client, err := ss.client()
@@ -101,22 +112,33 @@ func (ss *SpaceService) Upload(filepath string, timeout ...int) (resp *UploadRes
 	}
 
 	t := 180 * time.Second
-	if len(timeout) > 0 {
-		t = time.Duration(timeout[0]) * time.Second
+	if opts.Timeout > 0 {
+		t = opts.Timeout
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), t)
 	defer cancel()
 
-	objname := resolveObjName(filepath)
-	contenttype, err := resolveContentType(filepath)
+	filenamme := opts.FileName
+	objname := resolveObjName(filenamme)
+	contenttype, err := resolveContentType(filenamme)
 	if err != nil {
 		resp.Error = err
 		return
 	}
 
-	_, err = client.FPutObjectWithContext(ctx, ss.GetBucket(), objname, filepath, minio.PutObjectOptions{
-		ContentType: contenttype,
-	})
+	metadata := make(map[string]string)
+	for k, v := range opts.Metadata {
+		metadata[k] = v
+	}
+	if opts.Public {
+		metadata["x-amz-acl"] = "public-read"
+	}
+
+	putObjectOptions := minio.PutObjectOptions{
+		ContentType:  contenttype,
+		UserMetadata: metadata,
+	}
+	_, err = client.FPutObjectWithContext(ctx, ss.GetBucket(), objname, filenamme, putObjectOptions)
 
 	if err != nil {
 		resp.Error = err
@@ -128,10 +150,10 @@ func (ss *SpaceService) Upload(filepath string, timeout ...int) (resp *UploadRes
 }
 
 // AsyncUpload async upload
-func (ss *SpaceService) AsyncUpload(filepath string) (errchan chan<- *UploadResponse) {
+func (ss *SpaceService) AsyncUpload(opts *UploadOptions) (errchan chan<- *UploadResponse) {
 	errchan = make(chan *UploadResponse)
 	go func() {
-		errchan <- ss.Upload(filepath)
+		errchan <- ss.Upload(opts)
 	}()
 	return errchan
 }

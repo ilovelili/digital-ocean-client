@@ -14,13 +14,18 @@ example:
 import doclient
 
 func main() {
-    spaceservice := NewSpaceService("{{your digitalocean space API key}}", "{{your digitalocean space API secret}}")
-    spaceservice.SetRegion("nyc1")
-    spaceservice.SetEndPoint("{{nyc1.digitaloceanspaces.com}}")
-    spaceservice.SetBucket("{{your digitalocean bucketname}}")
+    spaceservice := NewSpaceService("<<api key>>", "<<secret key>>")
+    spaceservice.SetRegion("sgp1")
+    spaceservice.SetEndPoint("sgp1.digitaloceanspaces.com")
+    spaceservice.SetBucket("dongfeng")
 
-    err := spaceservice.Upload("./test.png")
-    if err != nil {
+    opts := &UploadOptions{
+        FileName: "./test.png",
+        Public:   true,
+    }
+
+    resp := spaceservice.Upload(opts)
+    if resp.Error != nil {
         log.Fatal(err)
     }
 }
