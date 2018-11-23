@@ -12,6 +12,13 @@ import (
 	"golang.org/x/net/context"
 )
 
+// UploadResponse upload response
+type UploadResponse struct {
+	// Location location of uploaded file
+	Location string
+	Error    error
+}
+
 // SpaceContext context includes EndPoint, Region and FileName info
 type SpaceContext struct {
 	EndPoint string
@@ -79,35 +86,50 @@ func (ss *SpaceService) client() (*minio.Client, error) {
 }
 
 // Upload upload file
-func (ss *SpaceService) Upload(filepath string) (err error) {
+func (ss *SpaceService) Upload(filepath string, timeout ...int) (resp *UploadResponse) {
+	resp = new(UploadResponse)
+
 	client, err := ss.client()
 	if err != nil {
+		resp.Error = err
 		return
 	}
 
 	if exsit, err := client.BucketExists(ss.GetBucket()); !exsit || err != nil {
-		return fmt.Errorf("bucket does not exist")
+		resp.Error = fmt.Errorf("bucket does not exist")
+		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	t := 180 * time.Second
+	if len(timeout) > 0 {
+		t = time.Duration(timeout[0]) * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), t)
 	defer cancel()
 
 	objname := resolveObjName(filepath)
 	contenttype, err := resolveContentType(filepath)
 	if err != nil {
-		return err
+		resp.Error = err
+		return
 	}
 
 	_, err = client.FPutObjectWithContext(ctx, ss.GetBucket(), objname, filepath, minio.PutObjectOptions{
 		ContentType: contenttype,
 	})
 
+	if err != nil {
+		resp.Error = err
+	} else {
+		resp.Location = fmt.Sprintf("https://%s/%s/%s", ss.Context.EndPoint, ss.Context.Bucket, objname)
+	}
+
 	return
 }
 
 // AsyncUpload async upload
-func (ss *SpaceService) AsyncUpload(filepath string) (errchan chan<- error) {
-	errchan = make(chan error)
+func (ss *SpaceService) AsyncUpload(filepath string) (errchan chan<- *UploadResponse) {
+	errchan = make(chan *UploadResponse)
 	go func() {
 		errchan <- ss.Upload(filepath)
 	}()
