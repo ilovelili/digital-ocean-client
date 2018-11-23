@@ -11,15 +11,15 @@ Digital Ocean client designed for easy use. It's used by my own [DongFeng](https
 example:
 
 ```Go
-import doclient
+import github.com/ilovelili/digital-ocean-client
 
 func main() {
-    spaceservice := NewSpaceService("<<api key>>", "<<secret key>>")
+    spaceservice := doclient.NewSpaceService("<<api key>>", "<<secret key>>")
     spaceservice.SetRegion("sgp1")
     spaceservice.SetEndPoint("sgp1.digitaloceanspaces.com")
     spaceservice.SetBucket("dongfeng")
 
-    opts := &UploadOptions{
+    opts := &doclient.UploadOptions{
         FileName: "./test.png",
         Public:   true,
     }
